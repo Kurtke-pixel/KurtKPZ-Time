@@ -54,7 +54,7 @@ local Window = Rayfield:CreateWindow({
    LoadingTitle = "KurtKPZ Hub Loading...",
    LoadingSubtitle = "by Kurt ultimate",
    ConfigurationSaving = { Enabled = true, FolderName = "KurtKPZ_V4", FileName = "Config" },
-   Discord = { = false, Invite = "", RememberJoins = false },
+   Discord = { = Enabled false, Invite = "", RememberJoins = false },
    KeySystem = false 
 })
 
