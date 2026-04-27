@@ -1,29 +1,72 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- [TIME-BASED GREETING LOGIC]
-local function getGreeting()
-    local hour = os.date("*t").hour
-    local msg = "Hello User"
-    if hour >= 5 and hour < 12 then
-        -- Morning
-    elseif hour >= 12 and hour < 18 then
-        -- Noon
-    end
-    return msg
+-- [CUSTOM TOP-LEFT NOTIFICATION]
+local function SmallNotify(title, content)
+    local sg = game.CoreGui:FindFirstChild("KurtNotifyGui") or Instance.new("ScreenGui", game.CoreGui)
+    sg.Name = "KurtNotifyGui"
+    
+    local frame = Instance.new("Frame", sg)
+    frame.Size = UDim2.new(0, 180, 0, 50)
+    frame.Position = UDim2.new(0, 10, 0, -60)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    frame.BackgroundTransparency = 0.2
+    frame.BorderSizePixel = 0
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+    
+    local tLabel = Instance.new("TextLabel", frame)
+    tLabel.Size = UDim2.new(1, 0, 0, 25)
+    tLabel.Position = UDim2.new(0, 8, 0, 2)
+    tLabel.BackgroundTransparency = 1
+    tLabel.Text = title
+    tLabel.TextColor3 = Color3.fromRGB(255, 140, 0)
+    tLabel.TextSize = 14
+    tLabel.Font = Enum.Font.GothamBold
+    tLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    local cLabel = Instance.new("TextLabel", frame)
+    cLabel.Size = UDim2.new(1, 0, 0, 20)
+    cLabel.Position = UDim2.new(0, 8, 0, 22)
+    cLabel.BackgroundTransparency = 1
+    cLabel.Text = content
+    cLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    cLabel.TextSize = 12
+    cLabel.Font = Enum.Font.Gotham
+    cLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    frame:TweenPosition(UDim2.new(0, 10, 0, 10), "Out", "Quad", 0.5, true)
+    task.delay(5, function()
+        frame:TweenPosition(UDim2.new(0, 10, 0, -60), "In", "Quad", 0.5, true)
+        task.wait(0.5)
+        frame:Destroy()
+    end)
 end
 
--- [BOOTING WINDOW - WATERMARK REMOVED]
+local function getGreeting()
+    local hour = os.date("*t").hour
+    if hour >= 5 and hour < 12 then return "Good Morning!"
+    elseif hour >= 12 and hour < 18 then return "Good Afternoon!"
+    else return "Good Evening!" end
+end
+
+-- [BOOTING WINDOW]
 local Window = Rayfield:CreateWindow({
    Name = "KurtKPZ Ultimate Troll V4",
    LoadingTitle = "KurtKPZ Hub Loading...",
    LoadingSubtitle = "by Kurt ultimate",
    ConfigurationSaving = { Enabled = true, FolderName = "KurtKPZ_V4", FileName = "Config" },
    Discord = { Enabled = false, Invite = "", RememberJoins = true },
-   KeySystem = false,
-   CheckUpdate = false -- THIS REMOVES THE RAYFIELD INTERFACE RATE/WATERMARK
+   KeySystem = false 
 })
 
--- [POP-UP LOOP: EVERY 1 MINUTE - TOP LEFT]
+-- [WATERMARK REMOVAL]
+task.spawn(function()
+    task.wait(1)
+    pcall(function()
+        game.CoreGui.Rayfield.Main.TopBar.Watermark:Destroy()
+    end)
+end)
+
+-- [POP-UP LOOP]
 task.spawn(function()
     while true do
         local msg = getGreeting()
@@ -32,18 +75,11 @@ task.spawn(function()
         local h = d.hour % 12
         if h == 0 then h = 12 end
         local phTime = string.format("%02d:%02d %s", h, d.min, ampm)
-
-        Rayfield:Notify({
-            Title = msg,
-            Content = "PH Time: " .. phTime,
-            Duration = 10,
-            Image = 4483362458,
-        })
-        task.wait(60)
+        SmallNotify(msg, "PH Time: " .. phTime)
+        task.wait(60) 
     end
 end)
 
--- VARIABLES
 local LP = game.Players.LocalPlayer
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -71,9 +107,7 @@ MainTab:CreateSlider({
    Range = {16, 500},
    Increment = 1,
    CurrentValue = 16,
-   Callback = function(Value)
-      if LP.Character and LP.Character:FindFirstChild("Humanoid") then LP.Character.Humanoid.WalkSpeed = Value end
-   end,
+   Callback = function(Value) if LP.Character and LP.Character:FindFirstChild("Humanoid") then LP.Character.Humanoid.WalkSpeed = Value end end,
 })
 
 MainTab:CreateSlider({
@@ -97,23 +131,9 @@ MainTab:CreateSlider({
    Callback = function(Value) workspace.Gravity = Value end,
 })
 
-MainTab:CreateToggle({
-   Name = "Noclip",
-   CurrentValue = false,
-   Callback = function(Value) NoclipEnabled = Value end,
-})
-
-MainTab:CreateToggle({
-   Name = "Spinbot",
-   CurrentValue = false,
-   Callback = function(Value) SpinEnabled = Value end,
-})
-
-MainTab:CreateToggle({
-   Name = "Infinite Jump",
-   CurrentValue = false,
-   Callback = function(Value) InfJumpEnabled = Value end,
-})
+MainTab:CreateToggle({ Name = "Noclip", CurrentValue = false, Callback = function(Value) NoclipEnabled = Value end })
+MainTab:CreateToggle({ Name = "Spinbot", CurrentValue = false, Callback = function(Value) SpinEnabled = Value end })
+MainTab:CreateToggle({ Name = "Infinite Jump", CurrentValue = false, Callback = function(Value) InfJumpEnabled = Value end })
 
 RunService.Stepped:Connect(function()
     if NoclipEnabled and LP.Character then
@@ -123,7 +143,6 @@ RunService.Stepped:Connect(function()
         LP.Character.HumanoidRootPart.CFrame = LP.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(50), 0)
     end
 end)
-
 UIS.JumpRequest:Connect(function()
     if InfJumpEnabled and LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") then
         LP.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
@@ -137,25 +156,9 @@ CombatTab:CreateToggle({
    Callback = function(Value) AimbotEnabled = Value if not Value then CurrentTarget = nil end end,
 })
 
-CombatTab:CreateToggle({
-   Name = "Kill Aura (15 Studs)",
-   CurrentValue = false,
-   Callback = function(Value) KillAuraEnabled = Value end,
-})
-
-CombatTab:CreateToggle({
-   Name = "Hitbox Extender",
-   CurrentValue = false,
-   Callback = function(Value) HitboxEnabled = Value end,
-})
-
-CombatTab:CreateSlider({
-   Name = "Hitbox Size",
-   Range = {2, 50},
-   Increment = 1,
-   CurrentValue = 20,
-   Callback = function(Value) HitboxSizeValue = Value end,
-})
+CombatTab:CreateToggle({ Name = "Kill Aura (15 Studs)", CurrentValue = false, Callback = function(Value) KillAuraEnabled = Value end })
+CombatTab:CreateToggle({ Name = "Hitbox Extender", CurrentValue = false, Callback = function(Value) HitboxEnabled = Value end })
+CombatTab:CreateSlider({ Name = "Hitbox Size", Range = {2, 50}, Increment = 1, CurrentValue = 20, Callback = function(Value) HitboxSizeValue = Value end })
 
 RunService.RenderStepped:Connect(function()
     if AimbotEnabled then
@@ -199,6 +202,17 @@ task.spawn(function()
 end)
 
 --- [VISUALS & FPS] ---
+-- ADDED FOV CHANGER HERE --
+VisualTab:CreateSlider({
+   Name = "Field of View (FOV)",
+   Range = {30, 120},
+   Increment = 1,
+   CurrentValue = 70,
+   Callback = function(Value)
+      workspace.CurrentCamera.FieldOfView = Value
+   end,
+})
+
 VisualTab:CreateButton({
     Name = "Adidas Community Animations",
     Callback = function()
@@ -232,10 +246,8 @@ MiscTab:CreateButton({
         local tool = Instance.new("Tool", LP.Backpack) 
         tool.RequiresHandle = false 
         tool.Name = "KurtKPZ TP Tool"
-        tool.Activated:Connect(function() 
-            LP.Character:MoveTo(LP:GetMouse().Hit.p + Vector3.new(0, 3, 0)) 
-        end)
-        Rayfield:Notify({Title = "Inventory", Content = "TP Tool Added!", Duration = 3})
+        tool.Activated:Connect(function() LP.Character:MoveTo(LP:GetMouse().Hit.p + Vector3.new(0, 3, 0)) end)
+        SmallNotify("Inventory", "TP Tool Added!")
     end 
 })
 
@@ -243,14 +255,14 @@ MiscTab:CreateButton({
     Name = "Infinite Yield (FE Admin)",
     Callback = function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
-        Rayfield:Notify({Title = "System", Content = "Infinite Yield Loaded!", Duration = 3})
+        SmallNotify("System", "Infinite Yield Loaded!")
     end
 })
 
 MiscTab:CreateButton({ Name = "Redz Hub", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/tlredz/Scripts/refs/heads/main/main.luau"))() end })
 MiscTab:CreateButton({ Name = "YARHM", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Joystickplays/psychic-octo-invention/main/source/yarhm/1.20/yarhm.lua"))() end })
 MiscTab:CreateButton({ Name = "Fly GUI V3 (Hacker Island)", Callback = function() loadstring(game:HttpGet("https://rawscripts.net/raw/free-HD-admin-hacker-island-Fly-V3-X-111485"))() end })
-MiscTab:CreateButton({ Name = "Invisible (FE)", Callback = function() loadstring(game:HttpGet('https://pastebin.com/raw/3Rnd9rHf'))() end })
+MiscTab:CreateButton({ Name = "Invisible (FE)", Callback = function() loadstring(game:HttpGet('https://pastebin.com/raw/3Rnd9rHf')) end })
 
 MiscTab:CreateButton({
     Name = "Open KurtKPZ ESP Menu",
@@ -278,6 +290,7 @@ MiscTab:CreateButton({
         frame.Position = UDim2.new(0.05, 0, 0.4, 0)
         frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
         frame.Active = true
+        frame.Draggable = true
         Instance.new("UICorner", frame)
 
         local button = Instance.new("TextButton", frame)
