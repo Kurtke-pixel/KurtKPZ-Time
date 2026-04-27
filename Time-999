@@ -4,32 +4,29 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local function getGreeting()
     local hour = os.date("*t").hour
     local msg = "Hello User"
-    local color = Color3.fromRGB(255, 255, 255)
-
     if hour >= 5 and hour < 12 then
-        color = Color3.fromRGB(255, 140, 0) -- Orange (Morning)
+        -- Morning
     elseif hour >= 12 and hour < 18 then
-        color = Color3.fromRGB(255, 255, 0) -- Yellow (Noon)
-    else
-        color = Color3.fromRGB(0, 0, 139) -- Dark Blue (Night)
+        -- Noon
     end
-    return msg, color
+    return msg
 end
 
--- [BOOTING WINDOW]
+-- [BOOTING WINDOW - WATERMARK REMOVED]
 local Window = Rayfield:CreateWindow({
    Name = "KurtKPZ Ultimate Troll V4",
    LoadingTitle = "KurtKPZ Hub Loading...",
    LoadingSubtitle = "by Kurt ultimate",
    ConfigurationSaving = { Enabled = true, FolderName = "KurtKPZ_V4", FileName = "Config" },
    Discord = { Enabled = false, Invite = "", RememberJoins = true },
-   KeySystem = false 
+   KeySystem = false,
+   CheckUpdate = false -- THIS REMOVES THE RAYFIELD INTERFACE RATE/WATERMARK
 })
 
 -- [POP-UP LOOP: EVERY 1 MINUTE - TOP LEFT]
 task.spawn(function()
     while true do
-        local msg, col = getGreeting()
+        local msg = getGreeting()
         local d = os.date("*t")
         local ampm = d.hour >= 12 and "PM" or "AM"
         local h = d.hour % 12
@@ -42,7 +39,7 @@ task.spawn(function()
             Duration = 10,
             Image = 4483362458,
         })
-        task.wait(60) -- Pop up every one minute
+        task.wait(60)
     end
 end)
 
@@ -126,6 +123,7 @@ RunService.Stepped:Connect(function()
         LP.Character.HumanoidRootPart.CFrame = LP.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(50), 0)
     end
 end)
+
 UIS.JumpRequest:Connect(function()
     if InfJumpEnabled and LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") then
         LP.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
@@ -300,4 +298,3 @@ MiscTab:CreateButton({
 })
 
 Rayfield:LoadConfiguration()
-
