@@ -1,0 +1,303 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- [TIME-BASED GREETING LOGIC]
+local function getGreeting()
+    local hour = os.date("*t").hour
+    local msg = "Hello User"
+    local color = Color3.fromRGB(255, 255, 255)
+
+    if hour >= 5 and hour < 12 then
+        color = Color3.fromRGB(255, 140, 0) -- Orange (Morning)
+    elseif hour >= 12 and hour < 18 then
+        color = Color3.fromRGB(255, 255, 0) -- Yellow (Noon)
+    else
+        color = Color3.fromRGB(0, 0, 139) -- Dark Blue (Night)
+    end
+    return msg, color
+end
+
+-- [BOOTING WINDOW]
+local Window = Rayfield:CreateWindow({
+   Name = "KurtKPZ Ultimate Troll V4",
+   LoadingTitle = "KurtKPZ Hub Loading...",
+   LoadingSubtitle = "by Kurt ultimate",
+   ConfigurationSaving = { Enabled = true, FolderName = "KurtKPZ_V4", FileName = "Config" },
+   Discord = { Enabled = false, Invite = "", RememberJoins = true },
+   KeySystem = false 
+})
+
+-- [POP-UP LOOP: EVERY 1 MINUTE - TOP LEFT]
+task.spawn(function()
+    while true do
+        local msg, col = getGreeting()
+        local d = os.date("*t")
+        local ampm = d.hour >= 12 and "PM" or "AM"
+        local h = d.hour % 12
+        if h == 0 then h = 12 end
+        local phTime = string.format("%02d:%02d %s", h, d.min, ampm)
+
+        Rayfield:Notify({
+            Title = msg,
+            Content = "PH Time: " .. phTime,
+            Duration = 10,
+            Image = 4483362458,
+        })
+        task.wait(60) -- Pop up every one minute
+    end
+end)
+
+-- VARIABLES
+local LP = game.Players.LocalPlayer
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+
+local InfJumpEnabled = false
+local AimbotEnabled = false
+local CurrentTarget = nil 
+local NoclipEnabled = false
+local SpinEnabled = false
+local KillAuraEnabled = false
+local HitboxEnabled = false
+local HitboxSizeValue = 20
+
+-- TABS
+local MainTab = Window:CreateTab("Movement", "zap")
+local CombatTab = Window:CreateTab("Combat & Aim", "crosshair")
+local VisualTab = Window:CreateTab("Visuals & FPS", "eye")
+local MiscTab = Window:CreateTab("Misc & World", "settings")
+
+--- [MOVEMENT TAB] ---
+MainTab:CreateSlider({
+   Name = "WalkSpeed",
+   Range = {16, 500},
+   Increment = 1,
+   CurrentValue = 16,
+   Callback = function(Value)
+      if LP.Character and LP.Character:FindFirstChild("Humanoid") then LP.Character.Humanoid.WalkSpeed = Value end
+   end,
+})
+
+MainTab:CreateSlider({
+   Name = "Jump Power",
+   Range = {50, 500},
+   Increment = 1,
+   CurrentValue = 50,
+   Callback = function(Value)
+      if LP.Character and LP.Character:FindFirstChild("Humanoid") then
+         LP.Character.Humanoid.UseJumpPower = true
+         LP.Character.Humanoid.JumpPower = Value
+      end
+   end,
+})
+
+MainTab:CreateSlider({
+   Name = "Gravity Control",
+   Range = {0, 196},
+   Increment = 1,
+   CurrentValue = 196,
+   Callback = function(Value) workspace.Gravity = Value end,
+})
+
+MainTab:CreateToggle({
+   Name = "Noclip",
+   CurrentValue = false,
+   Callback = function(Value) NoclipEnabled = Value end,
+})
+
+MainTab:CreateToggle({
+   Name = "Spinbot",
+   CurrentValue = false,
+   Callback = function(Value) SpinEnabled = Value end,
+})
+
+MainTab:CreateToggle({
+   Name = "Infinite Jump",
+   CurrentValue = false,
+   Callback = function(Value) InfJumpEnabled = Value end,
+})
+
+RunService.Stepped:Connect(function()
+    if NoclipEnabled and LP.Character then
+        for _, v in pairs(LP.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
+    end
+    if SpinEnabled and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+        LP.Character.HumanoidRootPart.CFrame = LP.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(50), 0)
+    end
+end)
+UIS.JumpRequest:Connect(function()
+    if InfJumpEnabled and LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") then
+        LP.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+    end
+end)
+
+--- [COMBAT & AIM] ---
+CombatTab:CreateToggle({
+   Name = "Aimbot (Lock Camera)",
+   CurrentValue = false,
+   Callback = function(Value) AimbotEnabled = Value if not Value then CurrentTarget = nil end end,
+})
+
+CombatTab:CreateToggle({
+   Name = "Kill Aura (15 Studs)",
+   CurrentValue = false,
+   Callback = function(Value) KillAuraEnabled = Value end,
+})
+
+CombatTab:CreateToggle({
+   Name = "Hitbox Extender",
+   CurrentValue = false,
+   Callback = function(Value) HitboxEnabled = Value end,
+})
+
+CombatTab:CreateSlider({
+   Name = "Hitbox Size",
+   Range = {2, 50},
+   Increment = 1,
+   CurrentValue = 20,
+   Callback = function(Value) HitboxSizeValue = Value end,
+})
+
+RunService.RenderStepped:Connect(function()
+    if AimbotEnabled then
+        if CurrentTarget and CurrentTarget.Character and CurrentTarget.Character:FindFirstChild("Head") then
+            local _, onScreen = Camera:WorldToViewportPoint(CurrentTarget.Character.Head.Position)
+            if onScreen then Camera.CFrame = CFrame.new(Camera.CFrame.Position, CurrentTarget.Character.Head.Position) return end
+        end
+        local closestDist = math.huge
+        local newTarget = nil
+        for _, v in pairs(Players:GetPlayers()) do
+            if v ~= LP and v.Character and v.Character:FindFirstChild("Head") then
+                local pos, onScreen = Camera:WorldToViewportPoint(v.Character.Head.Position)
+                if onScreen then
+                    local dist = (Vector2.new(pos.X, pos.Y) - UIS:GetMouseLocation()).Magnitude
+                    if dist < closestDist then closestDist = dist newTarget = v end
+                end
+            end
+        end
+        CurrentTarget = newTarget
+    end
+end)
+
+task.spawn(function()
+    while task.wait(0.2) do
+        for _, v in pairs(Players:GetPlayers()) do
+            if v ~= LP and v.Character then
+                if HitboxEnabled then
+                    local p = v.Character:FindFirstChild("HumanoidRootPart") or v.Character:FindFirstChild("Head")
+                    if p then p.Size = Vector3.new(HitboxSizeValue, HitboxSizeValue, HitboxSizeValue) p.Transparency = 0.5 p.CanCollide = false end
+                end
+                if KillAuraEnabled and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = v.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp and (LP.Character.HumanoidRootPart.Position - hrp.Position).Magnitude < 15 then
+                        local tool = LP.Character:FindFirstChildOfClass("Tool")
+                        if tool then tool:Activate() end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+--- [VISUALS & FPS] ---
+VisualTab:CreateButton({
+    Name = "Adidas Community Animations",
+    Callback = function()
+        local function Apply(character)
+            local anim = character:WaitForChild("Animate")
+            anim.idle.Animation1.AnimationId = "rbxassetid://122257458498464"
+            anim.walk.WalkAnim.AnimationId = "rbxassetid://122150855457006"
+            anim.run.RunAnim.AnimationId = "rbxassetid://82598234841035"
+        end
+        if LP.Character then Apply(LP.Character) end
+        LP.CharacterAdded:Connect(Apply)
+    end,
+})
+
+VisualTab:CreateButton({
+   Name = "ULTRA FPS BOOST",
+   Callback = function()
+      for _, v in pairs(game:GetDescendants()) do
+         if v:IsA("Part") or v:IsA("MeshPart") then v.Material = Enum.Material.SmoothPlastic v.Color = Color3.fromRGB(163, 162, 165)
+         elseif v:IsA("Decal") or v:IsA("Texture") or v:IsA("ParticleEmitter") then v:Destroy() end
+      end
+   end,
+})
+
+VisualTab:CreateButton({ Name = "Enable Infinite Zoom", Callback = function() LP.CameraMaxZoomDistance = 10000 end })
+
+--- [MISC & WORLD] ---
+MiscTab:CreateButton({ 
+    Name = "KurtKPZ Tp Tool", 
+    Callback = function()
+        local tool = Instance.new("Tool", LP.Backpack) 
+        tool.RequiresHandle = false 
+        tool.Name = "KurtKPZ TP Tool"
+        tool.Activated:Connect(function() 
+            LP.Character:MoveTo(LP:GetMouse().Hit.p + Vector3.new(0, 3, 0)) 
+        end)
+        Rayfield:Notify({Title = "Inventory", Content = "TP Tool Added!", Duration = 3})
+    end 
+})
+
+MiscTab:CreateButton({
+    Name = "Infinite Yield (FE Admin)",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+        Rayfield:Notify({Title = "System", Content = "Infinite Yield Loaded!", Duration = 3})
+    end
+})
+
+MiscTab:CreateButton({ Name = "Redz Hub", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/tlredz/Scripts/refs/heads/main/main.luau"))() end })
+MiscTab:CreateButton({ Name = "YARHM", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Joystickplays/psychic-octo-invention/main/source/yarhm/1.20/yarhm.lua"))() end })
+MiscTab:CreateButton({ Name = "Fly GUI V3 (Hacker Island)", Callback = function() loadstring(game:HttpGet("https://rawscripts.net/raw/free-HD-admin-hacker-island-Fly-V3-X-111485"))() end })
+MiscTab:CreateButton({ Name = "Invisible (FE)", Callback = function() loadstring(game:HttpGet('https://pastebin.com/raw/3Rnd9rHf'))() end })
+
+MiscTab:CreateButton({
+    Name = "Open KurtKPZ ESP Menu",
+    Callback = function()
+        local ESP_ENABLED = false
+        local ESPObjects = {}
+        local function updateESP()
+            if ESP_ENABLED then
+                for _, plr in pairs(Players:GetPlayers()) do
+                    if plr ~= LP and plr.Character and not ESPObjects[plr] then
+                        local h = Instance.new("Highlight", plr.Character)
+                        h.FillColor = Color3.fromRGB(255, 0, 0)
+                        ESPObjects[plr] = h
+                    end
+                end
+            else
+                for _, h in pairs(ESPObjects) do h:Destroy() end
+                table.clear(ESPObjects)
+            end
+        end
+
+        local gui = Instance.new("ScreenGui", game.CoreGui)
+        local frame = Instance.new("Frame", gui)
+        frame.Size = UDim2.new(0, 200, 0, 130)
+        frame.Position = UDim2.new(0.05, 0, 0.4, 0)
+        frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+        frame.Active = true
+        Instance.new("UICorner", frame)
+
+        local button = Instance.new("TextButton", frame)
+        button.Size = UDim2.new(1, -20, 0, 42)
+        button.Position = UDim2.new(0, 10, 0, 42)
+        button.Text = "ESP: OFF"
+        button.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+        button.TextColor3 = Color3.new(1,1,1)
+        Instance.new("UICorner", button)
+
+        button.MouseButton1Click:Connect(function()
+            ESP_ENABLED = not ESP_ENABLED
+            button.Text = ESP_ENABLED and "ESP: ON" or "ESP: OFF"
+            button.BackgroundColor3 = ESP_ENABLED and Color3.fromRGB(60,180,60) or Color3.fromRGB(180,60,60)
+            updateESP()
+        end)
+    end
+})
+
+Rayfield:LoadConfiguration()
+
