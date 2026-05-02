@@ -1,52 +1,42 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- [CUSTOM TOP-LEFT NOTIFICATION]
-local function SmallNotify(title, content)
-    local sg = game.CoreGui:FindFirstChild("KurtNotifyGui") or Instance.new("ScreenGui", game.CoreGui)
-    sg.Name = "KurtNotifyGui"
-    
+-- [DRAGGABLE PHILIPPINES TIME UI]
+local function CreateTimeUI()
+    local sg = Instance.new("ScreenGui", game.CoreGui)
+    sg.Name = "PH_Time_Overlay"
+    sg.ResetOnSpawn = false
+
     local frame = Instance.new("Frame", sg)
-    frame.Size = UDim2.new(0, 180, 0, 50)
-    frame.Position = UDim2.new(0, 10, 0, -60)
+    frame.Size = UDim2.new(0, 150, 0, 40)
+    frame.Position = UDim2.new(0, 10, 0, 50) 
     frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    frame.BackgroundTransparency = 0.2
+    frame.BackgroundTransparency = 0.3
     frame.BorderSizePixel = 0
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
-    
+    frame.Active = true
+    frame.Draggable = true 
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
     local tLabel = Instance.new("TextLabel", frame)
-    tLabel.Size = UDim2.new(1, 0, 0, 25)
-    tLabel.Position = UDim2.new(0, 8, 0, 2)
+    tLabel.Size = UDim2.new(1, 0, 1, 0)
     tLabel.BackgroundTransparency = 1
-    tLabel.Text = title
     tLabel.TextColor3 = Color3.fromRGB(255, 140, 0)
-    tLabel.TextSize = 14
+    tLabel.TextSize = 16
     tLabel.Font = Enum.Font.GothamBold
-    tLabel.TextXAlignment = Enum.TextXAlignment.Left
+    tLabel.Text = "PH Time: 00:00 AM"
 
-    local cLabel = Instance.new("TextLabel", frame)
-    cLabel.Size = UDim2.new(1, 0, 0, 20)
-    cLabel.Position = UDim2.new(0, 8, 0, 22)
-    cLabel.BackgroundTransparency = 1
-    cLabel.Text = content
-    cLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    cLabel.TextSize = 12
-    cLabel.Font = Enum.Font.Gotham
-    cLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-    frame:TweenPosition(UDim2.new(0, 10, 0, 10), "Out", "Quad", 0.5, true)
-    task.delay(5, function()
-        frame:TweenPosition(UDim2.new(0, 10, 0, -60), "In", "Quad", 0.5, true)
-        task.wait(0.5)
-        frame:Destroy()
+    task.spawn(function()
+        while true do
+            local d = os.date("*t")
+            local ampm = d.hour >= 12 and "PM" or "AM"
+            local h = d.hour % 12
+            if h == 0 then h = 12 end
+            tLabel.Text = string.format("PH Time: %02d:%02d %s", h, d.min, ampm)
+            task.wait(1)
+        end
     end)
 end
 
-local function getGreeting()
-    local hour = os.date("*t").hour
-    if hour >= 5 and hour < 12 then return "Good Morning!"
-    elseif hour >= 12 and hour < 18 then return "Good Afternoon!"
-    else return "Good Evening!" end
-end
+CreateTimeUI()
 
 -- [BOOTING WINDOW]
 local Window = Rayfield:CreateWindow({
@@ -54,7 +44,7 @@ local Window = Rayfield:CreateWindow({
    LoadingTitle = "KurtKPZ Hub Loading...",
    LoadingSubtitle = "by Kurt ultimate",
    ConfigurationSaving = { Enabled = true, FolderName = "KurtKPZ_V4", FileName = "Config" },
-   Discord = { = Enabled false, Invite = "", RememberJoins = false },
+   Discord = { Enabled = false, Invite = "", RememberJoins = false },
    KeySystem = false 
 })
 
@@ -62,22 +52,10 @@ local Window = Rayfield:CreateWindow({
 task.spawn(function()
     task.wait(1)
     pcall(function()
-        game.CoreGui.Rayfield.Main.TopBar.Watermark:Destroy()
+        if game.CoreGui:FindFirstChild("Rayfield") then
+            game.CoreGui.Rayfield.Main.TopBar.Watermark:Destroy()
+        end
     end)
-end)
-
--- [POP-UP LOOP]
-task.spawn(function()
-    while true do
-        local msg = getGreeting()
-        local d = os.date("*t")
-        local ampm = d.hour >= 12 and "PM" or "AM"
-        local h = d.hour % 12
-        if h == 0 then h = 12 end
-        local phTime = string.format("%02d:%02d %s", h, d.min, ampm)
-        SmallNotify(msg, "PH Time: " .. phTime)
-        task.wait(60) 
-    end
 end)
 
 local LP = game.Players.LocalPlayer
@@ -94,12 +72,71 @@ local SpinEnabled = false
 local KillAuraEnabled = false
 local HitboxEnabled = false
 local HitboxSizeValue = 20
+local UndergroundAutoKill = false
+local SinkDepth = -4
+local MM2_ESP_Enabled = false
+local AutoGetGun = false
 
 -- TABS
 local MainTab = Window:CreateTab("Movement", "zap")
+local MM2Tab = Window:CreateTab("MM2", "sword")
 local CombatTab = Window:CreateTab("Combat & Aim", "crosshair")
 local VisualTab = Window:CreateTab("Visuals & FPS", "eye")
 local MiscTab = Window:CreateTab("Misc & World", "settings")
+
+--- [MM2 TAB] ---
+MM2Tab:CreateSection("Murder Mystery 2 Specials")
+
+MM2Tab:CreateToggle({
+    Name = "Auto Role ESP (Murd/Sheriff)",
+    CurrentValue = false,
+    Callback = function(Value) MM2_ESP_Enabled = Value end
+})
+
+MM2Tab:CreateToggle({
+    Name = "Auto Teleport to Gun",
+    CurrentValue = false,
+    Callback = function(Value) AutoGetGun = Value end
+})
+
+-- MM2 LOGIC LOOP
+task.spawn(function()
+    while task.wait(0.5) do
+        if MM2_ESP_Enabled then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LP and p.Character then
+                    local color = nil
+                    if p.Backpack:FindFirstChild("Knife") or p.Character:FindFirstChild("Knife") then
+                        color = Color3.fromRGB(255, 0, 0)
+                    elseif p.Backpack:FindFirstChild("Gun") or p.Character:FindFirstChild("Gun") then
+                        color = Color3.fromRGB(0, 0, 255)
+                    end
+
+                    if color then
+                        local hl = p.Character:FindFirstChild("Kurt_MM2_HL") or Instance.new("Highlight", p.Character)
+                        hl.Name = "Kurt_MM2_HL"
+                        hl.FillColor = color
+                        hl.OutlineColor = Color3.new(1, 1, 1)
+                        hl.FillTransparency = 0.4
+                    else
+                        if p.Character:FindFirstChild("Kurt_MM2_HL") then p.Character.Kurt_MM2_HL:Destroy() end
+                    end
+                end
+            end
+        else
+            for _, p in pairs(Players:GetPlayers()) do
+                if p.Character and p.Character:FindFirstChild("Kurt_MM2_HL") then p.Character.Kurt_MM2_HL:Destroy() end
+            end
+        end
+
+        if AutoGetGun and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+            local gun = workspace:FindFirstChild("GunDrop") or workspace:FindFirstChild("Gun")
+            if gun and gun:IsA("BasePart") then
+                LP.Character.HumanoidRootPart.CFrame = gun.CFrame
+            end
+        end
+    end
+end)
 
 --- [MOVEMENT TAB] ---
 MainTab:CreateSlider({
@@ -143,6 +180,7 @@ RunService.Stepped:Connect(function()
         LP.Character.HumanoidRootPart.CFrame = LP.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(50), 0)
     end
 end)
+
 UIS.JumpRequest:Connect(function()
     if InfJumpEnabled and LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") then
         LP.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
@@ -150,6 +188,29 @@ UIS.JumpRequest:Connect(function()
 end)
 
 --- [COMBAT & AIM] ---
+CombatTab:CreateSection("Universal Auto-Kill")
+
+CombatTab:CreateToggle({
+    Name = "Underground Auto-Kill",
+    CurrentValue = false,
+    Callback = function(Value)
+        UndergroundAutoKill = Value
+        if not Value and LP.Character and LP.Character:FindFirstChild("Humanoid") then
+            LP.Character.Humanoid.HipHeight = 0 
+        end
+    end
+})
+
+CombatTab:CreateSlider({
+    Name = "Underground Depth",
+    Range = {-10, 0},
+    Increment = 0.5,
+    CurrentValue = -4,
+    Callback = function(Value) SinkDepth = Value end
+})
+
+CombatTab:CreateSection("Legacy Combat")
+
 CombatTab:CreateToggle({
    Name = "Aimbot (Lock Camera)",
    CurrentValue = false,
@@ -159,6 +220,41 @@ CombatTab:CreateToggle({
 CombatTab:CreateToggle({ Name = "Kill Aura (15 Studs)", CurrentValue = false, Callback = function(Value) KillAuraEnabled = Value end })
 CombatTab:CreateToggle({ Name = "Hitbox Extender", CurrentValue = false, Callback = function(Value) HitboxEnabled = Value end })
 CombatTab:CreateSlider({ Name = "Hitbox Size", Range = {2, 50}, Increment = 1, CurrentValue = 20, Callback = function(Value) HitboxSizeValue = Value end })
+
+local function GetClosest()
+    local target = nil
+    local dist = math.huge
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LP and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
+            local root = v.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                local d = (LP.Character.HumanoidRootPart.Position - root.Position).Magnitude
+                if d < dist then dist = d target = root end
+            end
+        end
+    end
+    return target
+end
+
+task.spawn(function()
+    while true do
+        if UndergroundAutoKill then
+            local char = LP.Character
+            if char and char:FindFirstChild("Humanoid") and char:FindFirstChild("HumanoidRootPart") then
+                char.Humanoid.HipHeight = SinkDepth
+                local enemy = GetClosest()
+                if enemy then
+                    local startTime = tick()
+                    while UndergroundAutoKill and tick() - startTime < 1 and enemy.Parent and enemy.Parent.Humanoid.Health > 0 do
+                        char.HumanoidRootPart.CFrame = CFrame.new(char.HumanoidRootPart.Position, Vector3.new(enemy.Position.X, char.HumanoidRootPart.Position.Y, enemy.Position.Z))
+                        RunService.RenderStepped:Wait()
+                    end
+                end
+            end
+        end
+        task.wait(0.1)
+    end
+end)
 
 RunService.RenderStepped:Connect(function()
     if AimbotEnabled then
@@ -202,15 +298,12 @@ task.spawn(function()
 end)
 
 --- [VISUALS & FPS] ---
--- ADDED FOV CHANGER HERE --
 VisualTab:CreateSlider({
    Name = "Field of View (FOV)",
    Range = {30, 120},
    Increment = 1,
    CurrentValue = 70,
-   Callback = function(Value)
-      workspace.CurrentCamera.FieldOfView = Value
-   end,
+   Callback = function(Value) workspace.CurrentCamera.FieldOfView = Value end,
 })
 
 VisualTab:CreateButton({
@@ -247,22 +340,13 @@ MiscTab:CreateButton({
         tool.RequiresHandle = false 
         tool.Name = "KurtKPZ TP Tool"
         tool.Activated:Connect(function() LP.Character:MoveTo(LP:GetMouse().Hit.p + Vector3.new(0, 3, 0)) end)
-        SmallNotify("Inventory", "TP Tool Added!")
     end 
 })
 
-MiscTab:CreateButton({
-    Name = "Infinite Yield (FE Admin)",
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
-        SmallNotify("System", "Infinite Yield Loaded!")
-    end
-})
-
+MiscTab:CreateButton({ Name = "Infinite Yield (FE Admin)", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))() end })
 MiscTab:CreateButton({ Name = "Redz Hub", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/tlredz/Scripts/refs/heads/main/main.luau"))() end })
-MiscTab:CreateButton({ Name = "YARHM", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Joystickplays/psychic-octo-invention/main/source/yarhm/1.20/yarhm.lua"))() end })
-MiscTab:CreateButton({ Name = "Fly GUI V3 (Hacker Island)", Callback = function() loadstring(game:HttpGet("https://rawscripts.net/raw/free-HD-admin-hacker-island-Fly-V3-X-111485"))() end })
-MiscTab:CreateButton({ Name = "Invisible (FE)", Callback = function() loadstring(game:HttpGet('https://pastebin.com/raw/3Rnd9rHf')) end })
+MiscTab:CreateButton({ Name = "Fly GUI V3", Callback = function() loadstring(game:HttpGet("https://rawscripts.net/raw/free-HD-admin-hacker-island-Fly-V3-X-111485"))() end })
+MiscTab:CreateButton({ Name = "Invisible (FE)", Callback = function() loadstring(game:HttpGet('https://pastebin.com/raw/3Rnd9rHf'))() end })
 
 MiscTab:CreateButton({
     Name = "Open KurtKPZ ESP Menu",
@@ -286,7 +370,7 @@ MiscTab:CreateButton({
 
         local gui = Instance.new("ScreenGui", game.CoreGui)
         local frame = Instance.new("Frame", gui)
-        frame.Size = UDim2.new(0, 200, 0, 130)
+        frame.Size = UDim2.new(0, 200, 0, 100)
         frame.Position = UDim2.new(0.05, 0, 0.4, 0)
         frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
         frame.Active = true
@@ -294,8 +378,8 @@ MiscTab:CreateButton({
         Instance.new("UICorner", frame)
 
         local button = Instance.new("TextButton", frame)
-        button.Size = UDim2.new(1, -20, 0, 42)
-        button.Position = UDim2.new(0, 10, 0, 42)
+        button.Size = UDim2.new(1, -20, 0, 50)
+        button.Position = UDim2.new(0, 10, 0, 25)
         button.Text = "ESP: OFF"
         button.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
         button.TextColor3 = Color3.new(1,1,1)
